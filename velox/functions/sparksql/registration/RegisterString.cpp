@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "velox/expression/SpecialFormRegistry.h"
 #include "velox/functions/lib/Re2Functions.h"
 #include "velox/functions/prestosql/StringFunctions.h"
 #include "velox/functions/prestosql/URLFunctions.h"
@@ -20,6 +21,7 @@
 #include "velox/functions/sparksql/Split.h"
 #include "velox/functions/sparksql/String.h"
 #include "velox/functions/sparksql/StringToMap.h"
+#include "velox/functions/sparksql/Factorial.h"
 
 namespace facebook::velox::functions {
 void registerSparkStringFunctions(const std::string& prefix) {
@@ -142,6 +144,7 @@ void registerStringFunctions(const std::string& prefix) {
       Varchar,
       Varchar,
       Varchar>({prefix + "mask"});
+  facebook::velox::exec::registerFunctionCallToSpecialForm("factorial",std::make_unique<FactorialCallToSpecialForm>());
 }
 } // namespace sparksql
 } // namespace facebook::velox::functions
