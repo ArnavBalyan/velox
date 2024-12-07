@@ -13,26 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * You may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- */
-
 #include "velox/functions/sparksql/Factorial.h"
+#include "velox/expression/ConstantExpr.h"
 #include "velox/expression/VectorFunction.h"
-#include "velox/vector/DecodedVector.h"
-#include "velox/functions/Registerer.h"
 #include <iostream>
 
 namespace facebook::velox::functions::sparksql {
 
 namespace {
-
 class Factorial : public exec::VectorFunction {
  public:
   Factorial() = default;
@@ -40,19 +28,18 @@ class Factorial : public exec::VectorFunction {
   void apply(
       const SelectivityVector& rows,
       std::vector<VectorPtr>& args,
-      const TypePtr& /*outputType*/,
+      const TypePtr& outputType,
       exec::EvalCtx& context,
       VectorPtr& result) const override {
-    // Ensure the result vector is writable and of the correct type.
-    context.ensureWritable(rows, BIGINT(), result);
+    context.ensureWritable(rows, INTEGER(), result);
     auto flatResult = result->asFlatVector<int64_t>();
     const auto numArgs = args.size();
 
     std::cout << "Number of arguments: " << numArgs << std::endl;
 
-    // Decode the input vector.
-    DecodedVector decodedInput(*args[0], rows);
+    exec::LocalDecodedVector decodedInput(context, *args[0], rows);
     std::cout << "Decoded input vector initialized." << std::endl;
+
 
     // Check if the input vector is a constant mapping.
     if (decodedInput.isConstantMapping()) {
@@ -119,33 +106,42 @@ class Factorial : public exec::VectorFunction {
 
  private:
   static constexpr int64_t kFactorials[4] = {1, 1, 2, 6};
-
-  // Helper function to compute the factorial for valid inputs.
-  int64_t computeFactorial(int64_t input) const {
-    if (input >= 0 && input <= 3) {
-      return kFactorials[input];
-    }
-    return -1; // Indicate invalid input.
-  }
 };
-
 } // namespace
 
-// Function to register the 'factorial' function.
-void registerFactorial(const std::string& name) {
-  // Define the function signature: bigint -> bigint.
-  std::vector<exec::FunctionSignaturePtr> signatures{
-      exec::FunctionSignatureBuilder()
-          .returnType("bigint")
-          .argumentType("bigint")
-          .build(),
-  };
-
-  // Register the vector function with the given name.
-  exec::registerVectorFunction(
-      name,
-      std::move(signatures),
-      std::make_unique<Factorial>());
+TypePtr FactorialCallToSpecialForm::resolveType(
+    const std::vector<TypePtr>&) {
+  return INTEGER();
 }
 
+exec::ExprPtr FactorialCallToSpecialForm::constructSpecialForm(
+    const TypePtr& type,
+    std::vector<exec::ExprPtr>&& args,
+    bool trackCpuUsage,
+    const core::QueryConfig& config) {
+  auto numArgs = args.size();
+
+  std::cout << "Number of arguments: " << numArgs << std::endl;
+  for (size_t i = 0; i < args.size(); ++i) {
+    std::cout << "Argument " << i << ": Type = " << args[i]->type()->toString() << std::endl;
+  }
+
+  VELOX_USER_CHECK_EQ(
+      numArgs,
+      1,
+      "factorial requires exactly 1 argument, but got {}.",
+      numArgs);
+  VELOX_USER_CHECK(
+      args[0]->type()->isInteger(),
+      "The argument of factorial must be an integer.");
+
+  auto factorial = std::make_shared<Factorial>();
+  return std::make_shared<exec::Expr>(
+      type,
+      std::move(args),
+      std::move(factorial),
+      exec::VectorFunctionMetadataBuilder().defaultNullBehavior(false).build(),
+      "factorial",
+      trackCpuUsage);
+}
 } // namespace facebook::velox::functions::sparksql
