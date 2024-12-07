@@ -16,6 +16,7 @@
 #include "velox/functions/sparksql/Factorial.h"
 #include "velox/expression/ConstantExpr.h"
 #include "velox/expression/VectorFunction.h"
+#include <iostream>
 
 namespace facebook::velox::functions::sparksql {
 
@@ -77,6 +78,12 @@ exec::ExprPtr FactorialCallToSpecialForm::constructSpecialForm(
     bool trackCpuUsage,
     const core::QueryConfig& config) {
   auto numArgs = args.size();
+
+  std::cout << "Number of arguments: " << numArgs << std::endl;
+  for (size_t i = 0; i < args.size(); ++i) {
+    std::cout << "Argument " << i << ": Type = " << args[i]->type()->toString() << std::endl;
+  }
+
   VELOX_USER_CHECK_EQ(
       numArgs,
       1,
