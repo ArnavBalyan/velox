@@ -90,7 +90,7 @@ exec::ExprPtr FactorialCallToSpecialForm::constructSpecialForm(
       "factorial requires exactly 1 argument, but got {}.",
       numArgs);
   VELOX_USER_CHECK(
-      args[0]->type()->isBigint(),
+      args[0]->type()->isInteger(),
       "The argument of factorial must be an integer.");
 
   auto factorial = std::make_shared<Factorial>();
