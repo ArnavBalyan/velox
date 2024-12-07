@@ -31,7 +31,7 @@ class Factorial : public exec::VectorFunction {
       exec::EvalCtx& context,
       VectorPtr& result) const override {
     context.ensureWritable(rows, INTEGER(), result);
-    auto flatResult = result->asFlatVector<int32_t>();
+    auto flatResult = result->asFlatVector<int64_t>();
     const auto numArgs = args.size();
 
 //    if (args[0])
@@ -51,7 +51,7 @@ class Factorial : public exec::VectorFunction {
         return;
       }
 
-      int32_t input = decodedInput.get()->valueAt<int32_t>(row);
+      int64_t input = decodedInput.get()->valueAt<int64_t>(row);
 
       if (input >= 0 && input <= 3) {
         flatResult->set(row, kFactorials[input]);
@@ -62,7 +62,7 @@ class Factorial : public exec::VectorFunction {
   }
 
  private:
-  static constexpr int32_t kFactorials[4] = {1, 1, 2, 6};
+  static constexpr int64_t kFactorials[4] = {1, 1, 2, 6};
 };
 } // namespace
 
@@ -83,7 +83,7 @@ exec::ExprPtr FactorialCallToSpecialForm::constructSpecialForm(
       "factorial requires exactly 1 argument, but got {}.",
       numArgs);
   VELOX_USER_CHECK(
-      args[0]->type()->isInteger(),
+      args[0]->type()->isBigint(),
       "The argument of factorial must be an integer.");
 
   auto factorial = std::make_shared<Factorial>();
@@ -96,4 +96,3 @@ exec::ExprPtr FactorialCallToSpecialForm::constructSpecialForm(
       trackCpuUsage);
 }
 } // namespace facebook::velox::functions::sparksql
-
