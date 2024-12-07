@@ -453,31 +453,75 @@ ExprPtr compileRewrittenExpression(
           trackCpuUsage);
     } else {
       const auto& functionName = call->name();
-      auto vectorFunctionSignatures = getVectorFunctionSignatures(functionName);
-      auto simpleFunctionSignatures =
-          simpleFunctions().getFunctionSignatures(functionName);
-      std::vector<std::string> signatures;
 
+      // Log the name of the function being checked
+      std::cout << "DEBUG: Function being checked: " << functionName << std::endl;
+
+      // Log argument types
+      std::cout << "DEBUG: Argument types provided:" << std::endl;
+      for (const auto& argType : inputTypes) {
+        std::cout << "  - " << argType->toString() << std::endl;
+      }
+
+      // Retrieve vector function signatures
+      auto vectorFunctionSignatures = getVectorFunctionSignatures(functionName);
+
+      // Log vector function signatures if available
+      if (vectorFunctionSignatures.has_value()) {
+        std::cout << "DEBUG: Vector function signatures for '" << functionName << "':" << std::endl;
+        for (const auto& signature : vectorFunctionSignatures.value()) {
+          std::cout << "  - " << signature->toString() << std::endl;
+        }
+      } else {
+        std::cout << "DEBUG: No vector function signatures found for '" << functionName << "'." << std::endl;
+      }
+
+      // Retrieve scalar (simple) function signatures
+      auto simpleFunctionSignatures = simpleFunctions().getFunctionSignatures(functionName);
+
+      // Log scalar function signatures if available
+      if (!simpleFunctionSignatures.empty()) {
+        std::cout << "DEBUG: Scalar function signatures for '" << functionName << "':" << std::endl;
+        for (const auto& signature : simpleFunctionSignatures) {
+          std::cout << "  - " << signature->toString() << std::endl;
+        }
+      } else {
+        std::cout << "DEBUG: No scalar function signatures found for '" << functionName << "'." << std::endl;
+      }
+
+      // Accumulate all signatures for error logging
+      std::vector<std::string> signatures;
       if (vectorFunctionSignatures.has_value()) {
         for (const auto& signature : vectorFunctionSignatures.value()) {
           signatures.push_back(fmt::format("({})", signature->toString()));
         }
       }
-
       for (const auto& signature : simpleFunctionSignatures) {
         signatures.push_back(fmt::format("({})", signature->toString()));
       }
 
+      // Handle no matching signatures
       if (signatures.empty()) {
+        std::cout << "ERROR: No matching function found for '" << functionName << "' with argument types:" << std::endl;
+        for (const auto& argType : inputTypes) {
+          std::cout << "  - " << argType->toString() << std::endl;
+        }
+
         VELOX_USER_FAIL(
             "Scalar function name not registered: {}, called with arguments: ({}).",
-            call->name(),
+            functionName,
             folly::join(", ", inputTypes));
       } else {
+        // Log the found signatures
+        std::cout << "DEBUG: Found matching signatures for '" << functionName << "':" << std::endl;
+        for (const auto& signature : signatures) {
+          std::cout << "  - " << signature << std::endl;
+        }
+
         VELOX_USER_FAIL(
             "Scalar function {} not registered with arguments: ({}). "
             "Found function registered with the following signatures:\n{}",
-            call->name(),
+            functionName,
             folly::join(", ", inputTypes),
             folly::join("\n", signatures));
       }

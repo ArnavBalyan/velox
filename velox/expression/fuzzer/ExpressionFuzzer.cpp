@@ -253,6 +253,16 @@ static const std::unordered_map<
             /// them to fuzzer instead of hard-coding signatures here.
             getSignaturesForCast(),
         },
+        {
+            "factorial",
+            std::vector<facebook::velox::exec::FunctionSignaturePtr>{
+                // Signature: factorial (integer) -> integer
+                facebook::velox::exec::FunctionSignatureBuilder()
+                    .returnType("T")
+                    .argumentType("T")
+                    .build()},
+        },
+
 };
 
 static std::unordered_set<std::string> splitNames(const std::string& names) {
