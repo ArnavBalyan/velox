@@ -35,32 +35,34 @@ class Factorial : public exec::VectorFunction {
     auto flatResult = result->asFlatVector<int64_t>();
     const auto numArgs = args.size();
 
-//    if (args[0])
-//    Return NULL data once the request is more than 20
-//    if (isConstantSeparator() && args[0]->isNullAt(0)) {
-//      auto localResult = BaseVector::createNullConstant(
-//          outputType, rows.end(), context.pool());
-//      context.moveOrCopyResult(localResult, rows, result);
-//      return;
-//    }
+    std::cout << "Number of arguments: " << numArgs << std::endl;
 
     exec::LocalDecodedVector decodedInput(context, *args[0], rows);
+    std::cout << "Decoded input vector initialized." << std::endl;
 
     rows.applyToSelected([&](vector_size_t row) {
+      std::cout << "Processing row: " << row << std::endl;
+
       if (decodedInput.get()->isNullAt(row)) {
+        std::cout << "Row " << row << " is null in input." << std::endl;
         result->setNull(row, true);
         return;
       }
 
       int64_t input = decodedInput.get()->valueAt<int64_t>(row);
+      std::cout << "Row " << row << ", input value: " << input << std::endl;
 
       if (input >= 0 && input <= 3) {
+        std::cout << "Row " << row << ", factorial value: " << kFactorials[input] << std::endl;
         flatResult->set(row, kFactorials[input]);
       } else {
+        std::cout << "Row " << row << " input out of range. Setting null." << std::endl;
         result->setNull(row, true);
       }
     });
+    std::cout << "Completed processing rows." << std::endl;
   }
+
 
  private:
   static constexpr int64_t kFactorials[4] = {1, 1, 2, 6};
