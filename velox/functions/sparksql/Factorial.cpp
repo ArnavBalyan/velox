@@ -45,8 +45,8 @@ class Factorial : public exec::VectorFunction {
                   << args[i]->as<ConstantVector<int64_t>>()->valueAt(0) << std::endl;
       } else if (args[i]->isFlatEncoding()) {
         std::cout << "Argument " << i << " is a flat vector." << std::endl;
-      } else if (args[i]->isDictionaryEncoding()) {
-        std::cout << "Argument " << i << " is a dictionary vector." << std::endl;
+      } else {
+        std::cout << "Argument " << i << " is a strange vector." << std::endl;
       }
     }
 
