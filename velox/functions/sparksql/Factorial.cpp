@@ -77,9 +77,11 @@ class Factorial : public exec::VectorFunction {
 
         int64_t value;
         if (inputVector->base()->type()->kind() == TypeKind::INTEGER) {
-          value = inputVector->valueAt<int32_t>(row);  // Use int32_t for INTEGER
+          value = inputVector->valueAt<int32_t>(row);
+          std::cout << "[FactorialFunction] 81 " << row << ": Input value = " << value << std::endl;
         } else if (inputVector->base()->type()->kind() == TypeKind::BIGINT) {
-          value = inputVector->valueAt<int64_t>(row);  // Use int64_t for BIGINT
+          value = inputVector->valueAt<int64_t>(row);
+          std::cout << "[FactorialFunction] 84 " << row << ": Input value = " << value << std::endl;
         } else {
           throw std::runtime_error("Unsupported input type for factorial function.");
         }
