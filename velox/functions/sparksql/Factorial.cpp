@@ -59,7 +59,7 @@ class Factorial : public exec::VectorFunction {
         int64_t value = inputVector->valueAt<int64_t>(row);
         std::cout << "[FactorialFunction] Row " << row << ": Input value = " << value << std::endl;
 
-        int64_t factorial = computeFactorial(value);
+        int64_t factorial = 0;
         std::cout << "[FactorialFunction] Row " << row << ": Computed factorial = " << factorial << std::endl;
 
         flatResult->set(row, factorial);
