@@ -57,7 +57,7 @@ class Factorial : public exec::VectorFunction {
         std::cout << "Input constant value: " << input << std::endl;
 
         // Compute the factorial.
-        int64_t factorial = computeFactorial(input);
+        int64_t factorial = 0;
 
         if (factorial == -1) {
           std::cout << "Input value out of range. Setting nulls." << std::endl;
@@ -90,7 +90,7 @@ class Factorial : public exec::VectorFunction {
         std::cout << "Row " << row << ", input value: " << input << std::endl;
 
         // Compute the factorial.
-        int64_t factorial = computeFactorial(input);
+        int64_t factorial = 0;
 
         if (factorial == -1) {
           std::cout << "Row " << row << " input out of range. Setting null." << std::endl;
