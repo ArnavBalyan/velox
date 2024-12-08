@@ -36,6 +36,9 @@ class Factorial : public exec::VectorFunction {
     std::cout << "[FactorialFunction] Number of arguments: " << numArgs << std::endl;
     for (size_t i = 0; i < args.size(); ++i) {
       std::cout << "[FactorialFunction] Argument " << i << ": Type = " << args[i]->type()->toString() << std::endl;
+      if (args[i]->isFlatEncoding()) {
+        std::cout << "Argument " << i << " is a flat vector." << std::endl;
+      }
     }
 
     for (size_t i = 0; i < args.size(); ++i) {
@@ -71,11 +74,18 @@ class Factorial : public exec::VectorFunction {
         std::cout << "[FactorialFunction] Row " << row << " is null, setting result to null." << std::endl;
         flatResult->setNull(row, true);
       } else {
-        int64_t value = inputVector->valueAt<int64_t>(row);
-        std::cout << "[FactorialFunction] Row " << row << ": Input value = " << value << std::endl;
 
+        int64_t value;
+        if (inputVector->base()->type()->kind() == TypeKind::INTEGER) {
+          value = inputVector->valueAt<int32_t>(row);  // Use int32_t for INTEGER
+        } else if (inputVector->base()->type()->kind() == TypeKind::BIGINT) {
+          value = inputVector->valueAt<int64_t>(row);  // Use int64_t for BIGINT
+        } else {
+          throw std::runtime_error("Unsupported input type for factorial function.");
+        }
+
+        std::cout << "[FactorialFunction] Row " << row << ": Input value = " << value << std::endl;
         int64_t factorial = 0;
-        std::cout << "[FactorialFunction] Row " << row << ": Computed factorial = " << factorial << std::endl;
 
         flatResult->set(row, factorial);
       }
