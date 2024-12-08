@@ -31,77 +31,42 @@ class Factorial : public exec::VectorFunction {
       const TypePtr& outputType,
       exec::EvalCtx& context,
       VectorPtr& result) const override {
-    context.ensureWritable(rows, INTEGER(), result);
-    auto flatResult = result->asFlatVector<int64_t>();
+    // Log the number of arguments passed
     const auto numArgs = args.size();
+    std::cout << "[FactorialFunction] Number of arguments: " << numArgs << std::endl;
 
-    std::cout << "Number of arguments: " << numArgs << std::endl;
+    // Ensure the result vector is writable
+    context.ensureWritable(rows, BIGINT(), result);
+    std::cout << "[FactorialFunction] Result vector initialized and writable." << std::endl;
 
-    exec::LocalDecodedVector decodedInput(context, *args[0], rows);
-    std::cout << "Decoded input vector initialized." << std::endl;
+    auto* flatResult = result->asFlatVector<int64_t>();
 
+    // Decode the input vector
+    exec::DecodedArgs decodedArgs(rows, args, context);
+    std::cout << "[FactorialFunction] Input vector decoding initialized." << std::endl;
 
-    // Check if the input vector is a constant mapping.
-    if (decodedInput.isConstantMapping()) {
-      std::cout << "Input is constant mapping." << std::endl;
+    auto* inputVector = decodedArgs.at(0);
 
-      if (decodedInput.isNullAt(0)) {
-        std::cout << "Input is a constant null." << std::endl;
-        // Set all result positions to null.
-        rows.applyToSelected([&](vector_size_t row) {
-          flatResult->setNull(row, true);
-        });
+    // Log the number of selected rows
+    std::cout << "[FactorialFunction] Number of rows to process: " << rows.end() << std::endl;
+
+    // Process each row
+    rows.applyToSelected([&](vector_size_t row) {
+      if (inputVector->isNullAt(row)) {
+        std::cout << "[FactorialFunction] Row " << row << " is null, setting result to null." << std::endl;
+        flatResult->setNull(row, true);
       } else {
-        // Get the constant input value.
-        int64_t input = decodedInput.valueAt<int64_t>(0);
-        std::cout << "Input constant value: " << input << std::endl;
+        int64_t value = inputVector->valueAt<int64_t>(row);
+        std::cout << "[FactorialFunction] Row " << row << ": Input value = " << value << std::endl;
 
-        // Compute the factorial.
-        int64_t factorial = 0;
+        int64_t factorial = computeFactorial(value);
+        std::cout << "[FactorialFunction] Row " << row << ": Computed factorial = " << factorial << std::endl;
 
-        if (factorial == -1) {
-          std::cout << "Input value out of range. Setting nulls." << std::endl;
-          // Set all result positions to null.
-          rows.applyToSelected([&](vector_size_t row) {
-            flatResult->setNull(row, true);
-          });
-        } else {
-          // Set all result positions to the factorial value.
-          rows.applyToSelected([&](vector_size_t row) {
-            flatResult->set(row, factorial);
-          });
-        }
+        flatResult->set(row, factorial);
       }
-    } else {
-      std::cout << "Input is not constant mapping." << std::endl;
+    });
 
-      // Process each selected row.
-      rows.applyToSelected([&](vector_size_t row) {
-        std::cout << "Processing row: " << row << std::endl;
-
-        if (decodedInput.isNullAt(row)) {
-          std::cout << "Row " << row << " is null in input." << std::endl;
-          flatResult->setNull(row, true);
-          return;
-        }
-
-        // Get the input value for the row.
-        int64_t input = decodedInput.valueAt<int64_t>(row);
-        std::cout << "Row " << row << ", input value: " << input << std::endl;
-
-        // Compute the factorial.
-        int64_t factorial = 0;
-
-        if (factorial == -1) {
-          std::cout << "Row " << row << " input out of range. Setting null." << std::endl;
-          flatResult->setNull(row, true);
-        } else {
-          std::cout << "Row " << row << ", factorial value: " << factorial << std::endl;
-          flatResult->set(row, factorial);
-        }
-      });
-    }
-    std::cout << "Completed processing rows." << std::endl;
+    std::cout << "[FactorialFunction] Completed processing all rows." << std::endl;
   }
 
  private:
