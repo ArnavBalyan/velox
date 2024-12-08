@@ -34,6 +34,21 @@ class Factorial : public exec::VectorFunction {
     // Log the number of arguments passed
     const auto numArgs = args.size();
     std::cout << "[FactorialFunction] Number of arguments: " << numArgs << std::endl;
+    for (size_t i = 0; i < args.size(); ++i) {
+      std::cout << "[FactorialFunction] Argument " << i << ": Type = " << args[i]->type()->toString() << std::endl;
+    }
+
+    for (size_t i = 0; i < args.size(); ++i) {
+      std::cout << "Argument " << i << ": Type = " << args[i]->type()->toString() << std::endl;
+      if (args[i]->isConstantEncoding()) {
+        std::cout << "Argument " << i << " is a constant vector with value: "
+                  << args[i]->as<ConstantVector<int64_t>>()->valueAt(0) << std::endl;
+      } else if (args[i]->isFlatEncoding()) {
+        std::cout << "Argument " << i << " is a flat vector." << std::endl;
+      } else if (args[i]->isDictionaryEncoding()) {
+        std::cout << "Argument " << i << " is a dictionary vector." << std::endl;
+      }
+    }
 
     // Ensure the result vector is writable
     context.ensureWritable(rows, BIGINT(), result);
