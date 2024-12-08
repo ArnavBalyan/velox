@@ -16,11 +16,19 @@
 #include "velox/functions/sparksql/Factorial.h"
 #include "velox/expression/ConstantExpr.h"
 #include "velox/expression/VectorFunction.h"
+#include <limits>
 #include <iostream>
 
 namespace facebook::velox::functions::sparksql {
 
 namespace {
+
+/**
+ * Computes the factorial of integers in the range [0...20]
+ *
+ * Returns NULL for inputs which are outside the range [0...20].
+ * Leverages a lookup table for O(1) computation, similar to Spark JVM.
+ */
 class Factorial : public exec::VectorFunction {
  public:
   Factorial() = default;
@@ -31,73 +39,55 @@ class Factorial : public exec::VectorFunction {
       const TypePtr& outputType,
       exec::EvalCtx& context,
       VectorPtr& result) const override {
-    // Log the number of arguments passed
-    const auto numArgs = args.size();
-    std::cout << "[FactorialFunction] Number of arguments: " << numArgs << std::endl;
-    for (size_t i = 0; i < args.size(); ++i) {
-      std::cout << "[FactorialFunction] Argument " << i << ": Type = " << args[i]->type()->toString() << std::endl;
-      if (args[i]->isFlatEncoding()) {
-        std::cout << "Argument " << i << " is a flat vector." << std::endl;
-      }
-    }
 
-    for (size_t i = 0; i < args.size(); ++i) {
-      std::cout << "Argument " << i << ": Type = " << args[i]->type()->toString() << std::endl;
-      if (args[i]->isConstantEncoding()) {
-        std::cout << "Argument " << i << " is a constant vector with value: "
-                  << args[i]->as<ConstantVector<int64_t>>()->valueAt(0) << std::endl;
-      } else if (args[i]->isFlatEncoding()) {
-        std::cout << "Argument " << i << " is a flat vector." << std::endl;
-      } else {
-        std::cout << "Argument " << i << " is a strange vector." << std::endl;
-      }
-    }
-
-    // Ensure the result vector is writable
-    context.ensureWritable(rows, BIGINT(), result);
-    std::cout << "[FactorialFunction] Result vector initialized and writable." << std::endl;
-
+    context.ensureWritable(rows, INTEGER(), result);
     auto* flatResult = result->asFlatVector<int64_t>();
 
-    // Decode the input vector
     exec::DecodedArgs decodedArgs(rows, args, context);
-    std::cout << "[FactorialFunction] Input vector decoding initialized." << std::endl;
-
     auto* inputVector = decodedArgs.at(0);
 
-    // Log the number of selected rows
-    std::cout << "[FactorialFunction] Number of rows to process: " << rows.end() << std::endl;
-
-    // Process each row
     rows.applyToSelected([&](vector_size_t row) {
       if (inputVector->isNullAt(row)) {
-        std::cout << "[FactorialFunction] Row " << row << " is null, setting result to null." << std::endl;
         flatResult->setNull(row, true);
       } else {
-
-        int64_t value;
-        if (inputVector->base()->type()->kind() == TypeKind::INTEGER) {
-          value = inputVector->valueAt<int32_t>(row);
-          std::cout << "[FactorialFunction] 81 " << row << ": Input value = " << value << std::endl;
-        } else if (inputVector->base()->type()->kind() == TypeKind::BIGINT) {
-          value = inputVector->valueAt<int64_t>(row);
-          std::cout << "[FactorialFunction] 84 " << row << ": Input value = " << value << std::endl;
+        int32_t value = inputVector->valueAt<int32_t>(row);
+        if (value < LOWER_BOUND || value > UPPER_BOUND) {
+          flatResult->setNull(row, true);
         } else {
-          throw std::runtime_error("Unsupported input type for factorial function.");
+          flatResult->set(row, kFactorials[value]);
         }
-
-        std::cout << "[FactorialFunction] Row " << row << ": Input value = " << value << std::endl;
-        int64_t factorial = 0;
-
-        flatResult->set(row, factorial);
       }
     });
-
-    std::cout << "[FactorialFunction] Completed processing all rows." << std::endl;
   }
 
  private:
-  static constexpr int64_t kFactorials[4] = {1, 1, 2, 6};
+  static constexpr int64_t LOWER_BOUND = 0;
+  static constexpr int64_t UPPER_BOUND = 20;
+  constexpr int64_t MAX_INT64 = std::numeric_limits<int64_t>::max();
+
+  static constexpr int64_t kFactorials[21] = {
+    1,
+    1,
+    2,
+    6,
+    24,
+    120,
+    720,
+    5040,
+    40320,
+    362880,
+    3628800,
+    39916800,
+    479001600,
+    6227020800L,
+    87178291200L,
+    1307674368000L,
+    20922789888000L,
+    355687428096000L,
+    6402373705728000L,
+    121645100408832000L,
+    2432902008176640000L
+  };
 };
 } // namespace
 
@@ -112,11 +102,6 @@ exec::ExprPtr FactorialCallToSpecialForm::constructSpecialForm(
     bool trackCpuUsage,
     const core::QueryConfig& config) {
   auto numArgs = args.size();
-
-  std::cout << "Number of arguments: " << numArgs << std::endl;
-  for (size_t i = 0; i < args.size(); ++i) {
-    std::cout << "Argument " << i << ": Type = " << args[i]->type()->toString() << std::endl;
-  }
 
   VELOX_USER_CHECK_EQ(
       numArgs,
