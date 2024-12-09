@@ -63,7 +63,7 @@ class Factorial : public exec::VectorFunction {
  private:
   static constexpr int64_t LOWER_BOUND = 0;
   static constexpr int64_t UPPER_BOUND = 20;
-  constexpr int64_t MAX_INT64 = std::numeric_limits<int64_t>::max();
+  static constexpr int64_t MAX_INT64 = std::numeric_limits<int64_t>::max();
 
   static constexpr int64_t kFactorials[21] = {
     1,
