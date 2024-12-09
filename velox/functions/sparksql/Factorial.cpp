@@ -40,7 +40,7 @@ class Factorial : public exec::VectorFunction {
       exec::EvalCtx& context,
       VectorPtr& result) const override {
 
-    context.ensureWritable(rows, INTEGER(), result);
+    context.ensureWritable(rows, BIGINT(), result);
     auto* flatResult = result->asFlatVector<int64_t>();
 
     exec::DecodedArgs decodedArgs(rows, args, context);
@@ -63,7 +63,7 @@ class Factorial : public exec::VectorFunction {
  private:
   static constexpr int64_t LOWER_BOUND = 0;
   static constexpr int64_t UPPER_BOUND = 20;
-  constexpr int64_t MAX_INT64 = std::numeric_limits<int64_t>::max();
+  static constexpr int64_t MAX_INT64 = std::numeric_limits<int64_t>::max();
 
   static constexpr int64_t kFactorials[21] = {
     1,
@@ -93,7 +93,7 @@ class Factorial : public exec::VectorFunction {
 
 TypePtr FactorialCallToSpecialForm::resolveType(
     const std::vector<TypePtr>&) {
-  return INTEGER();
+  return BIGINT();
 }
 
 exec::ExprPtr FactorialCallToSpecialForm::constructSpecialForm(
