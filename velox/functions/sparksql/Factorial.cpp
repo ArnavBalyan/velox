@@ -40,6 +40,9 @@ class Factorial : public exec::VectorFunction {
       exec::EvalCtx& context,
       VectorPtr& result) const override {
 
+    VELOX_CHECK(!args.empty() && args[0], "Input vector is null.");
+    LOG(INFO) << "Input vector type: " << args[0]->type()->toString();
+
     context.ensureWritable(rows, INTEGER(), result);
     auto* flatResult = result->asFlatVector<int64_t>();
 

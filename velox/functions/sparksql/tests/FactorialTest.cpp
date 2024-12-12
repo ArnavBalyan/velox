@@ -25,8 +25,9 @@ class FactorialTest : public SparkFunctionBaseTest {
   void testFactorial(
       const VectorPtr& input,
       const VectorPtr& expected) {
-    auto result = evaluate<SimpleVector<int64_t>>(
-        "factorial(c0)", makeRowVector({input}));
+    // Ensure proper wrapping of the input in a RowVector.
+    auto rowVector = makeRowVector({input});
+    auto result = evaluate<SimpleVector<int64_t>>("factorial(c0)", rowVector);
     velox::test::assertEqualVectors(expected, result);
   }
 };
@@ -48,7 +49,8 @@ TEST_F(FactorialTest, nullInput) {
 
 TEST_F(FactorialTest, outOfRangeInput) {
   auto input = makeFlatVector<int32_t>({-1, 21, -5, 25});
-  auto expected = makeNullConstant(TypeKind::BIGINT, input->size());
+  auto expected = makeNullableFlatVector<int64_t>(
+      {std::nullopt, std::nullopt, std::nullopt, std::nullopt});
   testFactorial(input, expected);
 }
 
