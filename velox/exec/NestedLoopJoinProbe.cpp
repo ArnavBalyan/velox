@@ -293,7 +293,7 @@ bool NestedLoopJoinProbe::addToOutput() {
   //
   // Since cross join batches can be returned without filter evaluation, no need
   // to prepare output here.
-  if (!isCrossJoin()) {
+  if (!isCrossJoin() && !isLeftSemiJoinProject(joinType)) {
     prepareOutput();
   }
 
@@ -323,6 +323,37 @@ bool NestedLoopJoinProbe::addToOutput() {
     // Only re-calculate the filter if we have a new build vector.
     if (buildRow_ == 0) {
       evaluateJoinFilter(currentBuild);
+    }
+
+    /**
+     * Implements a a Left Semi Project Join within NestedLoopJoinProbe.
+     * The getOutputLeftSemiJoinImpl() will ensure that exactly one row is
+     * produced for each probe row, augmented with a boolean "match" column
+     * which will indicate whether a matching build row exists on the
+     * build side.
+     *
+     * 1. At this point, the filter expressions are applied and we short
+     *    circuit the execution for a LeftSemiProject since we don't require
+     *    mismatch rows or build side projections. For each probe row, we simply
+     *    iterate through decoded filter results to determine if at least
+     *    one build side row satisfies the filter condition.
+     * 2. If match is found, the match column is marked as `true`, and
+     *    defaulted to false otherwise. Finally populates the output row with
+     *    the probe row data.
+     * 3. The function ensures that only one row is produced in the output,
+     *    indicating build side match. After processing the current probe row,
+     *    it skip the rest of the build rows.
+     *
+     * Returns a `RowVectorPtr` representing the output row. For left semi project
+     * this basically contains probe row data with the match column.
+     *
+     */
+    if (isLeftSemiJoinProject(joinType)) {
+      output_ = getOutputLeftSemiJoinImpl();
+      numOutputRows_ = 1;
+      ++buildIndex_;
+      buildRow_ = 0;
+      return false;
     }
 
     // Iterate over the filter results. For each match, add an output record.
@@ -684,4 +715,29 @@ RowVectorPtr NestedLoopJoinProbe::getBuildMismatchedOutput(
       pool(), outputType_, nullptr, numUnmatched, std::move(projectedChildren));
 }
 
+RowVectorPtr NestedLoopJoinProbe::getOutputLeftSemiJoinImpl() {
+  bool matched = false;
+  numOutputRows_ = 0;
+  for (auto i = buildRow_; i < decodedFilterResult_.size(); ++i) {
+    if (isJoinConditionMatch(i)) {
+      matched = true;
+      break;
+    }
+  }
+  std::vector<VectorPtr> localColumns(outputType_->size());
+  for (const auto& projection : identityProjections_) {
+    localColumns[projection.outputChannel] = BaseVector::wrapInDictionary(
+        nullptr,
+        allocateIndices(1, pool(), {probeRow_}),
+        1,
+        input_->childAt(projection.inputChannel));
+  }
+  int matchChannel = findMatchChannel();
+  auto* matchVector = matchColumn()->as<FlatVector<bool>>();
+  matchVector->set(numOutputRows_, matched);
+
+  return std::make_shared<RowVector>(
+      pool(), outputType_, nullptr, 1, std::move(localColumns));
+
+}
 } // namespace facebook::velox::exec

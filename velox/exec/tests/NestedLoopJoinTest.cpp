@@ -622,5 +622,29 @@ TEST_F(NestedLoopJoinTest, mergeBuildVectors) {
   ASSERT_TRUE(waitForTaskCompletion(cursor->task().get()));
 }
 
+TEST_F(NestedLoopJoinTest, leftSemiJoinProjectDataValidation) {
+  auto probeVectors = makeRowVector({sequence<int32_t>(5)}); // {0, 1, 2, 3, 4}
+  auto buildVectors = makeRowVector({sequence<int32_t>(3, 2)}); // {2, 3, 4}
+
+  auto expected = makeRowVector({makeFlatVector<int32_t>({2, 3, 4})});
+
+  auto planNodeIdGenerator = std::make_shared<core::PlanNodeIdGenerator>();
+  auto op = PlanBuilder(planNodeIdGenerator)
+                .values({probeVectors})
+                .nestedLoopJoin(
+                    PlanBuilder(planNodeIdGenerator)
+                        .values({buildVectors})
+                        .planNode(),
+                    "t0 = u0",
+                    {"t0"},
+                    core::JoinType::kLeftSemiProject)
+                .planNode();
+
+  AssertQueryBuilder builder{op};
+  auto result = builder.copyResults(pool());
+
+  assertEqualVectors(expected, result);
+}
+
 } // namespace
 } // namespace facebook::velox::exec::test

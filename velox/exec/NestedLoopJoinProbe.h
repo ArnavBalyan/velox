@@ -365,6 +365,14 @@ class NestedLoopJoinProbe : public Operator {
   std::vector<IdentityProjection> filterBuildProjections_;
 
   BufferPtr buildOutMapping_;
+
+  // Returns the 'match' column in the output for semi project joins.
+  VectorPtr& matchColumn() const {
+    VELOX_DCHECK(
+        isRightSemiProjectJoin(joinType_) || isLeftSemiProjectJoin(joinType_));
+    return output_->children().back();
+  }
+
 };
 
 } // namespace facebook::velox::exec
