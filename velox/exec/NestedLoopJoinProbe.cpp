@@ -361,7 +361,7 @@ bool NestedLoopJoinProbe::addToOutput() {
      * this basically contains probe row data with the match column.
      *
      */
-    if (isLeftSemiProjectJoin(joinType_)) {
+    if (isLeftSemiProjectJoin(joinType_) && joinCondition_ == nullptr) {
       output_ = getOutputLeftSemiJoinImpl();
       numOutputRows_ = 1;
       ++buildIndex_;
