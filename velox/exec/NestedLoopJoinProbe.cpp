@@ -17,7 +17,6 @@
 #include "velox/exec/OperatorUtils.h"
 #include "velox/exec/Task.h"
 #include "velox/expression/FieldReference.h"
-#include <iostream>
 
 namespace facebook::velox::exec {
 namespace {
@@ -288,12 +287,6 @@ bool NestedLoopJoinProbe::advanceProbe() {
 bool NestedLoopJoinProbe::addToOutput() {
   VELOX_CHECK_NOT_NULL(input_);
 
-  std::cerr << "\n=== [DEBUG] getOutputLeftSemiJoinImpl() called ===" << std::endl;
-  std::cerr << "[PROBE] RowVector 'input_' has " << input_->size() << " rows." << std::endl;
-  for (int row = 0; row < input_->size(); ++row) {
-    std::cerr << "  Probe row " << row << ": " << input_->toString(row) << std::endl;
-  }
-
   // First, create a new output vector. By default, allocate space for
   // outputBatchSize_ rows. The output always generates dictionaries wrapped
   // around the probe vector being processed.
@@ -306,12 +299,6 @@ bool NestedLoopJoinProbe::addToOutput() {
 
   while (!hasProbedAllBuildData()) {
     const auto& currentBuild = buildVectors_.value()[buildIndex_];
-
-      std::cerr << "[BUILD] RowVector at buildIndex_ = " << buildIndex_
-                << " has " << currentBuild->size() << " rows." << std::endl;
-      for (int row = 0; row < currentBuild->size(); ++row) {
-        std::cerr << "  Build row " << row << ": " << currentBuild->toString(row) << std::endl;
-      }
 
     // Empty build vector; move to the next.
     if (currentBuild->size() == 0) {
@@ -334,7 +321,7 @@ bool NestedLoopJoinProbe::addToOutput() {
     }
 
     // Only re-calculate the filter if we have a new build vector.
-    if (buildRow_ == 0) {
+    if (buildRow_ == 0 && joinCondition_ != nullptr) {
       evaluateJoinFilter(currentBuild);
     }
 
@@ -361,7 +348,7 @@ bool NestedLoopJoinProbe::addToOutput() {
      * this basically contains probe row data with the match column.
      *
      */
-    if (isLeftSemiProjectJoin(joinType_) && joinCondition_ == nullptr) {
+    if (isLeftSemiProjectJoin(joinType_)) {
       output_ = getOutputLeftSemiJoinImpl();
       numOutputRows_ = 1;
       ++buildIndex_;
@@ -397,6 +384,15 @@ bool NestedLoopJoinProbe::addToOutput() {
     ++buildIndex_;
     buildRow_ = 0;
   }
+
+  if (isLeftSemiProjectJoin(joinType_) && isBuildSideEmpty()) {
+      output_ = getOutputLeftSemiJoinImpl();
+      numOutputRows_ = 1;
+      ++buildIndex_;
+      buildRow_ = 0;
+      return true;
+  }
+
 
   // Check if the current probed row needs to be added as a mismatch (for left
   // and full outer joins).
@@ -733,16 +729,26 @@ RowVectorPtr NestedLoopJoinProbe::getOutputLeftSemiJoinImpl() {
 
   bool matched = false;
   numOutputRows_ = 0;
-  for (auto i = buildRow_; i < decodedFilterResult_.size(); ++i) {
-    if (isJoinConditionMatch(i)) {
-      matched = true;
-      std::cerr << "[DEBUG] Found MATCH at buildRow " << i << std::endl;
-      break;
+
+  if (isBuildSideEmpty()) {
+    matched = false;
+  } else if (joinCondition_ == nullptr) {
+    matched = true;
+  } else {
+    for (auto i = buildRow_; i < decodedFilterResult_.size(); ++i) {
+      if (isJoinConditionMatch(i)) {
+        matched = true;
+        break;
+      }
     }
   }
+  return makeSingleOutputRow(matched);
+}
+
+RowVectorPtr NestedLoopJoinProbe::makeSingleOutputRow(bool matched) {
   auto matchVector = BaseVector::create(BOOLEAN(), /*size=*/1, pool());
   auto flatMatch = matchVector->as<FlatVector<bool>>();
-  flatMatch->set(0, /*matched=*/matched);
+  flatMatch->set(0, matched);
 
   std::vector<VectorPtr> outputChildren(outputType_->size());
   for (auto& projection : identityProjections_) {
@@ -757,8 +763,8 @@ RowVectorPtr NestedLoopJoinProbe::getOutputLeftSemiJoinImpl() {
 
   auto singleRow =
       std::make_shared<RowVector>(pool(), outputType_, nullptr, 1, outputChildren);
-  std::cerr << "[OUTPUT] Single output row: " << singleRow->toString(0) << std::endl;
 
   return singleRow;
 }
+
 } // namespace facebook::velox::exec

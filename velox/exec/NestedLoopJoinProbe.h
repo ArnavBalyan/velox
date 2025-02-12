@@ -231,7 +231,7 @@ class NestedLoopJoinProbe : public Operator {
 
   /// Cross joins are translated into NLJ's without a join conditition.
   bool isCrossJoin() const {
-    return joinCondition_ == nullptr;
+    return joinCondition_ == nullptr && !isLeftSemiProjectJoin(joinType_);
   }
 
   // If build has a single vector, we can wrap probe and build batches into
@@ -375,6 +375,7 @@ class NestedLoopJoinProbe : public Operator {
 
   bool isLeftSemiJoinProject(core::JoinType joinType);
   facebook::velox::RowVectorPtr getOutputLeftSemiJoinImpl();
+  facebook::velox::RowVectorPtr makeSingleOutputRow(bool matched);
 
 };
 
