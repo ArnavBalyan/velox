@@ -50,24 +50,25 @@ Expected<Timestamp> SparkCastHooks::castIntToTimestamp(int64_t seconds) const {
   return Timestamp(seconds, 0);
 }
 
-
 Expected<Timestamp> SparkCastHooks::castDoubleToTimestamp(double d) const {
   double usecsAsDouble = d * 1'000'000.0;
-  constexpr double kMaxSeconds = static_cast<double>(
-      std::numeric_limits<int64_t>::max()) / 1'000'000.0;
-  constexpr double kMinSeconds = static_cast<double>(
-      std::numeric_limits<int64_t>::min()) / 1'000'000.0;
 
-  if (d > kMaxSeconds) {
+  static constexpr double kDoubleMaxI64 =
+      static_cast<double>(std::numeric_limits<int64_t>::max());
+  static constexpr double kDoubleMinI64 =
+      static_cast<double>(std::numeric_limits<int64_t>::min());
+
+  if (usecsAsDouble > kDoubleMaxI64) {
     return Timestamp::fromMicrosNoError(std::numeric_limits<int64_t>::max());
   }
-  if (d < kMinSeconds) {
+  if (usecsAsDouble < kDoubleMinI64) {
     return Timestamp::fromMicrosNoError(std::numeric_limits<int64_t>::min());
   }
 
-  int64_t micros = static_cast<int64_t>(d * 1'000'000.0);
+  int64_t micros = static_cast<int64_t>(usecsAsDouble);
   return Timestamp::fromMicrosNoError(micros);
 }
+
 
 Expected<int32_t> SparkCastHooks::castStringToDate(
     const StringView& dateString) const {
