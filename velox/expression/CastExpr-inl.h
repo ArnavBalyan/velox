@@ -286,6 +286,14 @@ void CastExpr::applyCastKernel(
       return;
     }
 
+    if constexpr (
+        (FromKind == TypeKind::BOOLEAN) && ToKind == TypeKind::TIMESTAMP) {
+      const auto castResult =
+          hooks_->castBooleanToTimestamp((bool)inputRowValue);
+      setResultOrError(castResult, row);
+      return;
+    }
+
     // Optimize empty input strings casting by avoiding throwing exceptions.
     if constexpr (
         FromKind == TypeKind::VARCHAR || FromKind == TypeKind::VARBINARY) {

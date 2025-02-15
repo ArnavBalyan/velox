@@ -750,5 +750,18 @@ TEST_F(SparkCastExprTest, bigintToBinary) {
        std::string("\x80\x00\x00\x00\x00\x00\x00\x00", 8)});
 }
 
+TEST_F(SparkCastExprTest, boolToTimestamp) {
+  testCast<bool, Timestamp>(
+      "castBoolToTimestamp",
+      {
+          true,
+          false,
+      },
+      {
+          Timestamp(0, 1000),
+          Timestamp(0, 0),
+      });
+}
+
 } // namespace
 } // namespace facebook::velox::test

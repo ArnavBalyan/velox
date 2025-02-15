@@ -50,6 +50,12 @@ Expected<Timestamp> SparkCastHooks::castIntToTimestamp(int64_t seconds) const {
   return Timestamp(seconds, 0);
 }
 
+Expected<Timestamp> SparkCastHooks::castBooleanToTimestamp(bool val) const {
+  // Spark `true` evalues to 1970-01-01 00:00:00.000001, `false` to epoch (0 microseconds).
+  // Use fromMicrosNoError to interpret '1' as 1 microsecond offset from epoch.
+  return Timestamp::fromMicrosNoError(val ? 1 : 0);
+}
+
 Expected<int32_t> SparkCastHooks::castStringToDate(
     const StringView& dateString) const {
   // Allows all patterns supported by Spark:
