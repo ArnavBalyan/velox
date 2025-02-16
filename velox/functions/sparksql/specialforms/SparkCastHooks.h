@@ -52,6 +52,8 @@ class SparkCastHooks : public exec::CastHooks {
   /// whitespaces before cast.
   StringView removeWhiteSpaces(const StringView& view) const override;
 
+  Expected<int64_t> castTimestampToInt(Timestamp timestamp) const override;
+
   const TimestampToStringOptions& timestampToStringOptions() const override {
     return timestampToStringOptions_;
   }
