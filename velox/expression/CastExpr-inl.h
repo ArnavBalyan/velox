@@ -22,7 +22,6 @@
 #include "velox/external/date/tz.h"
 #include "velox/type/Type.h"
 #include "velox/vector/SelectivityVector.h"
-
 namespace facebook::velox::exec {
 namespace {
 
@@ -282,6 +281,14 @@ void CastExpr::applyCastKernel(
         ToKind == TypeKind::TIMESTAMP) {
       const auto castResult =
           hooks_->castIntToTimestamp((int64_t)inputRowValue);
+      setResultOrError(castResult, row);
+      return;
+    }
+
+    if constexpr (
+        (FromKind == TypeKind::TIMESTAMP) && ToKind == TypeKind::DOUBLE) {
+      const auto castResult =
+          hooks_->castTimestampToDouble(inputRowValue);
       setResultOrError(castResult, row);
       return;
     }

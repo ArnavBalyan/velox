@@ -50,6 +50,13 @@ Expected<Timestamp> SparkCastHooks::castIntToTimestamp(int64_t seconds) const {
   return Timestamp(seconds, 0);
 }
 
+Expected<double> SparkCastHooks::castTimestampToDouble(Timestamp timestamp) const {
+  auto micros = timestamp.toMicros();
+
+  // Replicate Spark conversion via direct division.
+  return static_cast<double>(micros) / Timestamp::kMicrosecondsInSecond;
+}
+
 Expected<int32_t> SparkCastHooks::castStringToDate(
     const StringView& dateString) const {
   // Allows all patterns supported by Spark:

@@ -58,5 +58,8 @@ class CastHooks {
   virtual bool truncate() const = 0;
 
   virtual PolicyType getPolicy() const = 0;
+
+  // Cast timestamp to double.
+  virtual Expected<double> castTimestampToDouble(Timestamp timestamp) const = 0;
 };
 } // namespace facebook::velox::exec

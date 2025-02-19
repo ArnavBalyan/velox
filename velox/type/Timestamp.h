@@ -85,6 +85,7 @@ struct Timestamp {
   static constexpr int64_t kNanosecondsInMillisecond = 1'000'000;
   static constexpr int64_t kNanosInSecond =
       kNanosecondsInMillisecond * kMillisecondsInSecond;
+  static constexpr int64_t kMicrosecondsInSecond = 1'000'000;
   // The number of days between the Julian epoch and the Unix epoch.
   static constexpr int64_t kJulianToUnixEpochDays = 2440588LL;
   static constexpr int64_t kSecondsInDay = 86400LL;
