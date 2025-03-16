@@ -323,6 +323,36 @@ VectorPtr CastExpr::castFromIntervalDayTime(
   }
 }
 
+VectorPtr CastExpr::castFromIntervalYearMonth(
+    const SelectivityVector& rows,
+    const BaseVector& input,
+    exec::EvalCtx& context,
+    const TypePtr& toType) {
+  VectorPtr castResult;
+  context.ensureWritable(rows, toType, castResult);
+  (*castResult).clearNulls(rows);
+
+  auto* inputFlatVector = input.as<SimpleVector<int32_t>>();
+
+  switch (toType->kind()) {
+    case TypeKind::INTEGER: {
+      auto* inputFlatVector = input.as<SimpleVector<int32_t>>();
+      return std::make_shared<FlatVector<int32_t>>(
+          context.pool(),
+          INTEGER(),
+          inputFlatVector->nulls(),
+          inputFlatVector->size(),
+          inputFlatVector->values(),
+          inputFlatVector->nullCount());
+    }
+
+    default:
+      VELOX_UNSUPPORTED(
+          "Cast from INTERVAL YEAR TO MONTH to {} is not supported",
+          toType->toString());
+  }
+}
+
 namespace {
 void propagateErrorsOrSetNulls(
     bool setNullInResultAtError,
@@ -760,6 +790,8 @@ void CastExpr::applyPeeled(
         "Cast from {} to {} is not supported",
         fromType->toString(),
         toType->toString());
+  } else if (fromType->isIntervalYearMonth() && toType->kind() == TypeKind::INTEGER) {
+    result = castFromIntervalYearMonth(rows, input, context, toType);
   } else if (toType->isShortDecimal()) {
     result = applyDecimal<int64_t>(rows, input, context, fromType, toType);
   } else if (toType->isLongDecimal()) {
