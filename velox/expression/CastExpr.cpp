@@ -323,6 +323,60 @@ VectorPtr CastExpr::castFromIntervalDayTime(
   }
 }
 
+VectorPtr CastExpr::castFromIntervalYearMonth(
+    const SelectivityVector& rows,
+    const BaseVector& input,
+    exec::EvalCtx& context,
+    const TypePtr& toType) {
+  VectorPtr castResult;
+  context.ensureWritable(rows, toType, castResult);
+  (*castResult).clearNulls(rows);
+
+  auto* inputFlatVector = input.as<SimpleVector<int32_t>>();
+
+  switch (toType->kind()) {
+    case TypeKind::INTEGER: {
+      auto* resultFlatVector = castResult->as<FlatVector<int32_t>>();
+
+      applyToSelectedNoThrowLocal(context, rows, castResult, [&](int row) {
+        int32_t intervalMonths = inputFlatVector->valueAt(row);
+        resultFlatVector->set(row, intervalMonths);
+      });
+      return castResult;
+    }
+
+    case TypeKind::VARCHAR: {
+      auto* resultFlatVector = castResult->as<FlatVector<StringView>>();
+
+      applyToSelectedNoThrowLocal(context, rows, castResult, [&](int row) {
+        try {
+          auto output = INTERVAL_YEAR_MONTH()->valueToString(
+              inputFlatVector->valueAt(row));
+          auto writer = exec::StringWriter(resultFlatVector, row);
+          writer.resize(output.size());
+          ::memcpy(writer.data(), output.data(), output.size());
+          writer.finalize();
+        } catch (const VeloxException& ue) {
+          if (!ue.isUserError()) {
+            throw;
+          }
+          VELOX_USER_FAIL(
+              makeErrorMessage(input, row, toType) + " " + ue.message());
+        } catch (const std::exception& e) {
+          VELOX_USER_FAIL(
+              makeErrorMessage(input, row, toType) + " " + e.what());
+        }
+      });
+      return castResult;
+    }
+
+    default:
+      VELOX_UNSUPPORTED(
+          "Cast from INTERVAL YEAR TO MONTH to {} is not supported",
+          toType->toString());
+  }
+}
+
 namespace {
 void propagateErrorsOrSetNulls(
     bool setNullInResultAtError,
@@ -760,6 +814,8 @@ void CastExpr::applyPeeled(
         "Cast from {} to {} is not supported",
         fromType->toString(),
         toType->toString());
+  } else if (fromType->isIntervalYearMonth() && (toType->kind() == TypeKind::INTEGER) || toType->kind() == TypeKind::VARCHAR) {
+    result = castFromIntervalYearMonth(rows, input, context, toType);
   } else if (toType->isShortDecimal()) {
     result = applyDecimal<int64_t>(rows, input, context, fromType, toType);
   } else if (toType->isLongDecimal()) {
