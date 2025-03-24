@@ -814,7 +814,8 @@ void CastExpr::applyPeeled(
         "Cast from {} to {} is not supported",
         fromType->toString(),
         toType->toString());
-  } else if (fromType->isIntervalYearMonth() && (toType->kind() == TypeKind::INTEGER) || toType->kind() == TypeKind::VARCHAR) {
+  } else if (fromType->isIntervalYearMonth() &&
+           (toType->kind() == TypeKind::INTEGER || toType->kind() == TypeKind::VARCHAR)) {
     result = castFromIntervalYearMonth(rows, input, context, toType);
   } else if (toType->isShortDecimal()) {
     result = applyDecimal<int64_t>(rows, input, context, fromType, toType);
