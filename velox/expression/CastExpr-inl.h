@@ -21,6 +21,7 @@
 #include "velox/expression/StringWriter.h"
 #include "velox/type/Type.h"
 #include "velox/vector/SelectivityVector.h"
+#include "velox/expression/CastExpr.h"
 
 namespace facebook::velox::exec {
 namespace {

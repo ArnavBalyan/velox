@@ -18,6 +18,7 @@
 #include "velox/expression/CastExpr-inl.h"
 #include "velox/functions/Udf.h"
 #include "velox/type/Conversions.h"
+#include "velox/type/tz/TimeZoneMap.h"
 
 namespace facebook::velox::functions::sparksql {
 namespace detail {
@@ -55,8 +56,12 @@ struct ToPrettyStringFunction {
           try {
             auto output = DATE()->toString(*input);
             result.append(output);
-          } catch (const std::exception& e) {
-            return Status::Invalid(e.what());
+            } catch (const VeloxException& ue) {
+              if (!ue.isUserError()) {
+                throw;
+              }
+            } catch (const std::exception& e) {
+              return Status::Invalid(e.what());
           }
           return Status::OK();
         }
@@ -140,6 +145,10 @@ struct ToPrettyStringTimestampFunction {
         const auto stringView =
             Timestamp::tsToStringView(inputValue, options_, result.data());
         result.resize(stringView.size());
+      } catch (const VeloxException& e) {
+        if (!e.isUserError()) {
+          throw;
+        }
       } catch (const std::exception& e) {
         return Status::Invalid(e.what());
       }

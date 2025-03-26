@@ -23,6 +23,7 @@
 #include "velox/functions/sparksql/String.h"
 #include "velox/functions/sparksql/StringToMap.h"
 #include "velox/functions/sparksql/ToPrettyString.h"
+#include "velox/functions/lib/RegistrationHelpers.h"
 
 namespace facebook::velox::functions {
 void registerSparkStringFunctions(const std::string& prefix) {
